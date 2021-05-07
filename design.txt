@@ -1,0 +1,103 @@
+all data is formatted as nodes, formatted as follows:
+  - 64 bits, node id
+  - 64 bits, node region index (see below)
+  - 64 bits, optional, backup database index (see below)
+  - 64 bits, node type
+  - 64 bits, node size
+  - 64 bits, data area index
+
+a node id consists of a 64 bit integer, with another 64 bit integer prefixed indicating the region
+the node is in (see below). this is represented textually as '<id>#<region>'. as well, another integer
+can be attached, representing the index in the backup list tos earch for this node on; if none is given,
+all items will be searched until one if found.
+
+a node also has an index, just representing where it is on the storage medium: ram, disk, etc.
+the index is NOT related to the position in the list, and they an differ.
+
+if a node id is set to 0, that node is considered null. when a new node is created, each region in
+the region list should be searched until one is found with the available flag. if one is found,
+and it has an unused node, a new node will be created in it. if no region is found, an error should be 
+returned. when a node is deleted, its id should be set to 0, but size and index should be preserved if 
+possible.
+
+nodes are stored in databases
+a database consists of:
+- in the very first 512 bytes, a header structure, consisting of:
+  - a signature, consisting of the ascii text 'BEGAYDOCRIME'
+  - a string used to reference this database, maximum of 32 characters
+  - type type of the database, see below
+  - the number of entries in the region list
+  - the number of entries in the backup list
+  - the next position in the data area
+  - padding, 0s
+- a list of node regions. since searching for nodes in a large space can be difficult, they are
+divided into regions, which may be arbitrarily large or small. that way, searching for a node just 
+involves searching a region instead of the whole space. the list of node regions stores ranges of
+indexes for th start and end of each region. to search for a node, you provide an id and a region,
+and the region is looked up in the region list, and then that region is searched for the given id.
+each entry in the region list is formatted as follows:
+  - start index, 64 bit integer
+  - end index, 64 bit integer
+the range is start inclusive but not end inclusive. these are indexed linearly: region 0 is the first 
+entry, and so on.
+- a list of backup databases. if a node is not found in this database, the backup list specifies
+other databases to search for it on. in the case of a ram database, this list usually contains a reference
+to the disk database, but it can be modified to have other references, like to a network database or
+to an external drive, for example. each entry in the list consists of:
+  - a number, 64 bits, representing the type of database:
+    - 1 = in memory database
+    - 2 = node database
+    - 3 = disk database 
+    - 4 = network database
+  - a reference string, 32 characters, which should match that of the database being referenced
+  - depending on the type of database, there might be additional information:
+    - in memory database:
+      - 64 bits - the virtual address of the database
+    - node database:
+      - 64 bits - node id
+      - 64 bits - node region
+      - 64 bits, optional - backup databse index to search for this node on
+    - disk database:
+      - 8 bits, optional - drive number of the disk. if it is 0, all disks will be searched.
+      - 8 bits, optional - partition number of the database. if it is 0, the database is assumed
+        to be at sector 0.
+    - network database:
+      - 256 characters - the ip or domain of the server to connect to
+      - 16 bits - the port to connect to
+    a database should always have 512 characters after it, to fit all of this possible information.
+- the node list.
+- the data area - takes up the rest of the database and stores the data in nodes as a back-to-back buffer.
+  when a node is created, its contents are written to the data area, at an index determined by:
+  - if the null node being used to create this node has a size less than or equal to the size of this node,
+    it should use its offset.
+  - otherwise, it should simply take the size of the data area in the header, increment it by its size, and
+    take that result. when this size reaches the end of the medium, an error can be thrown.
+  some databases can also store a list of positions in a seperate node, or do smth else to optimize finding
+  a position and space usage, but this is optional. once a node is created, it's contents in the data area
+  do not change. you can make a new node and delete the old one.
+
+both the backup list and region list can have entries with all fields set to 0, in which case the entry
+is null and should be ignored; it is there to allow for the database to grow. when an item is added to the
+database, it should replace the first null entry; when one is deleted, it should be replaced by a null entry,
+but entries in front of it should not be moved back. the total number of entries, including null ones,
+can never change.
+
+at any time, a database can be synced, meaning that if it is not an in-memory database, but it is being used
+in memory, the region list, backup list, and any new nodes will be synced to the node list and data area.
+
+a disk database should have the database written starting at the first sector. a network database should
+send the database header, region list, and backup list as bytes upon connection. then, it should maintain
+a connection,. when it recieves input, it should parse it as a follows:
+  - if the input is of the format GETNODE <index>, it should get the node with the given index and send it as
+    bytes.
+  - if the input is of the format SETNODE <index>, it should accept a node from the connection and overwrite the
+    node the given index with it.
+  - if the input is of the format GETDATA <pos> <count>, it should return <count> bytes from the data are
+    starting at <pos>.
+  - if the input is of the format SYNC, the database should read a new region list and backup list from the
+    connection and overwrite the current list with it. then it should accept any number of new nodes, until
+    it recieves a null node, at which point it should create every new node.
+
+a disk database should have the database written starting at sector 0 of the given partition.
+
+the way node types are defined depends on the operating system.
