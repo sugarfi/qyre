@@ -73,8 +73,6 @@ void kmain(void) {
         .fb = (uint32_t *) bootboot.fb_ptr,
         .color_type = bootboot.fb_type
     };
-    
-    puts(ctx);
 
     for(;;);
 }
