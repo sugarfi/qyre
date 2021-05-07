@@ -1,4 +1,4 @@
-.PHONY: clean os.img
+.PHONY: clean os.img font.o
 DEFAULT_GOAL: os.img
 
 C_SRC := $(shell find src -type f -name '*.c')
@@ -11,9 +11,9 @@ LDFLAGS = -T linker.ld -nostdlib -nostartfiles
 	@echo "Compile $<"
 	@gcc $(CFLAGS) -o $@ $<
 
-kernel.o: $(C_OBJ)
+kernel.o: $(C_OBJ) font.o
 	@echo "Link kernel.o"
-	@ld $(LDFLAGS) -o boot/kernel.o $(C_OBJ)
+	@ld $(LDFLAGS) -o boot/kernel.o $(C_OBJ) 
 
 diskdb.bin:
 	@echo "Create disk database file"

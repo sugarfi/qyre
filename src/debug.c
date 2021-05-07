@@ -14,35 +14,36 @@ void debug_puts(char* s) {
     }
 }
 
-int pow(int n, int b) {
-    int out = 1;
-    for (; b; b--) {
-        out *= n;
+uint64_t pow(uint64_t b, int n) {
+    uint64_t out = 1;
+    for (; n; n--) {
+        out *= b;
     }
     return out;
 }
 
-void debug_puti(int n, int base) {
-    if (n < 0) {
-        debug_putc('-');
-        n = -n;
-    }
+void debug_puti(uint64_t n, int base) {
+    char buf[64];
     if (n == 0) {
         debug_putc('0');
         return;
     }
 
-    int this, i = 0;
-    while (pow(base, i) <= n) {
-        i++;
+    int count = 0;
+    uint64_t n2 = n;
+    while (n2) {
+        count++;
+        n2 /= base;
     }
-    i--;
-    while (i >= 0) {
-        this = n / pow(base, i);
-        debug_putc(DIGITS[this]);
-        n -= this * pow(base, i);
-        i--;
+    buf[count] = 0;
+
+    int i = count - 1;
+    while (n) {
+        buf[i--] = DIGITS[n % base];
+        n /= base;
     }
+
+    debug_puts(buf);
 }
 
 void debug_printf(char *msg, ...) {
@@ -60,20 +61,32 @@ void debug_printf(char *msg, ...) {
                     }
                case 'd':
                     {
-                        int n = va_arg(args, int);
+                        uint64_t n = va_arg(args, uint64_t);
                         debug_puti(n, 10);
                         break;
                     }
                case 'x':
                     {
-                        int n = va_arg(args, int);
+                        uint64_t n = va_arg(args, uint64_t);
                         debug_puti(n, 16);
+                        break;
+                    }
+               case 'b':
+                    {
+                        uint64_t n = va_arg(args, uint64_t);
+                        debug_puti(n, 2);
                         break;
                     }
                case 's':
                     {
                         char *s = va_arg(args, char *);
                         debug_puts(s);
+                        break;
+                    }
+               case 'c':
+                    {
+                        char c = (char) (va_arg(args, int) & 0xff);
+                        debug_putc(c);
                         break;
                     }
             }

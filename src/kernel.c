@@ -2,6 +2,8 @@
 #include <node.h>
 #include <debug.h>
 #include <stddef.h>
+#include <bootboot.h>
+#include <graphics.h>
 
 const int MAX_REGION = 32;
 const int MAX_BACKUP = 4;
@@ -13,13 +15,12 @@ const uintptr_t BACKUP_LIST_ADDR = REGION_LIST_ADDR + (sizeof(node_region_entry_
 const uintptr_t NODE_LIST_ADDR = BACKUP_LIST_ADDR + (sizeof(node_backup_entry_t) * MAX_BACKUP);
 const uintptr_t DATA_ADDR = NODE_LIST_ADDR + (sizeof(node_t) * NODES_PER_REGION * MAX_REGION);
 
-const uintptr_t HEADER_ADDR2 = 0x2000000;
-const uintptr_t REGION_LIST_ADDR2 = HEADER_ADDR2 + 512;
-const uintptr_t BACKUP_LIST_ADDR2 = REGION_LIST_ADDR2 + (sizeof(node_region_entry_t) * MAX_REGION);
-const uintptr_t NODE_LIST_ADDR2 = BACKUP_LIST_ADDR2 + (sizeof(node_backup_entry_t) * MAX_BACKUP);
-const uintptr_t DATA_ADDR2 = NODE_LIST_ADDR2 + (sizeof(node_t) * NODES_PER_REGION * MAX_REGION);
+void puts(graphics_context_t ctx);
 
 void kmain(void) {
+    BOOTBOOT bootboot = *((BOOTBOOT *) 0xffffffffffe00000);
+    char *environment = (char *) 0xffffffffffe01000;
+
     int i;
 
     node_database_header_t header = {
@@ -65,6 +66,15 @@ void kmain(void) {
         .nodes = (node_t *) NODE_LIST_ADDR,
         .data = (uint8_t *) DATA_ADDR
     };
+
+    graphics_context_t ctx = {
+        .width = bootboot.fb_width,
+        .height = bootboot.fb_height,
+        .fb = (uint32_t *) bootboot.fb_ptr,
+        .color_type = bootboot.fb_type
+    };
+    
+    puts(ctx);
 
     for(;;);
 }
