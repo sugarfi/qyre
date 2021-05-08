@@ -2,6 +2,7 @@
 #include <node.h>
 #include <debug.h>
 #include <rand.h>
+#include <alloc.h>
 
 error_t node_lookup_region(uint64_t region, node_database_t db, node_region_entry_t *out) {
     if (region > db.header->max_regions) {
@@ -68,7 +69,42 @@ error_t node_lookup_database_ref(node_backup_entry_t ref, node_database_t *out) 
                 out->data = data;
                 return OK;
             }
-        case 2:
+        case 2: // disk database
+            {
+                node_backup_disk_t *other = (node_backup_disk_t *) ref.other;
+                alloc_t header_alloc;
+                error_t res;
+                if ((res = alloc(512, &header_alloc)) != OK) {
+                    return res;
+                }
+                node_database_header_t *header = (node_database_header_t *) header_alloc.ptr;
+                if (ata_read(other->sector, 1, (uint8_t *) header) != OK) {
+                    return ERROR_HARDWARE;
+                }
+                if (!strncmp(header->signature, "BEGAYDOCRIME", 12)) {
+                    error("invalid database signature");
+                    return ERROR_INVALID;
+                }
+                if (!strncmp(ref.ref, header->ref, 32)) {
+                    error("database refs don't match and no way to search for more");
+                    return ERROR_NOT_FOUND;
+                }
+
+                node_region_entry_t *regions;
+                int regions_size = sizeof(node_region_entry_t) * header->max_regions;
+                while (regions_size++ % 512);
+                ata_read(other->sector + 1, regions_size / 512, (uint8_t *) regions);
+                node_backup_entry_t *backups;
+                int backups_size = sizeof(node_backup_entry_t) * header->max_backups;
+                while (backups_size++ % 512);
+                ata_read(other->sector + 1 + regions_size / 512, backups_size / 512, (uint8_t *) backups);
+
+                memcpy((char *) header, (char *) out->header, sizeof(node_database_header_t));
+                debug_printf("%x %x %x\r\n", (uint64_t) header, (uint64_t) regions, (uint64_t) backups);
+                out->regions = regions;
+                out->backups = backups;
+                return OK;
+            }
         case 3:
         case 4:
             {
@@ -133,7 +169,7 @@ error_t node_lookup(node_ref_t ref, node_database_t db, node_t *out) {
         return ERROR_INVALID;
     }
 
-    node_database_t real_db;
+    node_database_t real_db = db;
     if (ref.backup != 0) {
         node_backup_entry_t real_db_ref;
         if (node_lookup_backup(ref.backup - 1, db, &real_db_ref) != OK) {
@@ -142,8 +178,6 @@ error_t node_lookup(node_ref_t ref, node_database_t db, node_t *out) {
         if (node_lookup_database_ref(real_db_ref, &real_db) != OK) {
             return ERROR_NOT_FOUND;
         }
-    } else {
-        real_db = db;
     }
 
     node_region_entry_t region;
@@ -215,7 +249,7 @@ error_t node_set(node_ref_t ref, node_t new, node_database_t *db) {
     node_database_t *real_db = db;
     if (ref.backup != 0) {
         node_backup_entry_t real_db_ref;
-        if (node_lookup_backup(ref.backup, *db, &real_db_ref) != OK) {
+        if (node_lookup_backup(ref.backup - 1, *db, &real_db_ref) != OK) {
             return ERROR_NOT_FOUND;
         }
         if (node_lookup_database_ref(real_db_ref, real_db) != OK) {
@@ -260,7 +294,7 @@ error_t node_set(node_ref_t ref, node_t new, node_database_t *db) {
     }
 }
 
-error_t node_add(uint8_t *data, uint64_t size, uint64_t type, node_database_t *db, node_ref_t *out) {
+error_t node_add(uint8_t *data, uint64_t size, node_type_t type, node_database_t *db, node_ref_t *out) {
     node_region_entry_t *region;
     int i;
     for (region = db->regions, i = 0; region->end != 0; region++, i++) {
@@ -280,6 +314,7 @@ error_t node_add(uint8_t *data, uint64_t size, uint64_t type, node_database_t *d
                     db->header->next_data_pos += size;
                 }
                 node.size = size;
+                node.type = (uint64_t) type;
                 memcpy((char *) data, (char *) (db->data + node.data_pos), size);
 
                 error_t res;
@@ -292,14 +327,15 @@ error_t node_add(uint8_t *data, uint64_t size, uint64_t type, node_database_t *d
         }
     }
 
-    return ERROR_NOT_IMPLEMENTED;
+    error("could not find free node");
+    return ERROR_NOT_FOUND;
 }
 
 error_t node_delete(node_ref_t ref, node_database_t *db) {
     node_database_t *real_db = db;
     if (ref.backup != 0) {
         node_backup_entry_t real_db_ref;
-        if (node_lookup_backup(ref.backup, *db, &real_db_ref) != OK) {
+        if (node_lookup_backup(ref.backup - 1, *db, &real_db_ref) != OK) {
             return ERROR_NOT_FOUND;
         }
         if (node_lookup_database_ref(real_db_ref, real_db) != OK) {
@@ -322,3 +358,26 @@ error_t node_delete(node_ref_t ref, node_database_t *db) {
 
     return OK;
 }
+
+error_t node_get_data(node_ref_t ref, node_database_t db, uint8_t **out) {
+    node_database_t real_db = db;
+    if (ref.backup != 0) {
+        node_backup_entry_t real_db_ref;
+        if (node_lookup_backup(ref.backup - 1, db, &real_db_ref) != OK) {
+            return ERROR_NOT_FOUND;
+        }
+        if (node_lookup_database_ref(real_db_ref, &real_db) != OK) {
+            return ERROR_NOT_FOUND;
+        }
+    }
+
+    node_t node;
+    error_t res;
+    if ((res = node_lookup(ref, real_db, &node)) != OK) {
+        return res;
+    }
+
+    *out = real_db.data + node.data_pos;
+    return OK;
+}
+

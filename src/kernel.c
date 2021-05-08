@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <bootboot.h>
 #include <graphics.h>
-#include <ata.h>
+#include <alloc.h>
 
 const int MAX_REGION = 32;
 const int MAX_BACKUP = 4;
@@ -68,12 +68,34 @@ void kmain(void) {
         .data = (uint8_t *) DATA_ADDR
     };
 
+    alloc_db = &db;
+
     graphics_context_t ctx = {
         .width = bootboot.fb_width,
         .height = bootboot.fb_height,
         .fb = (uint32_t *) bootboot.fb_ptr,
         .color_type = bootboot.fb_type
     };
+
+    node_backup_entry_t backup = {
+        .type = 2
+    };
+    node_backup_disk_t backup_other = {
+        .drive = 0, // this is ignored anyway,
+        .sector = 32896
+    };
+    memcpy("disk____000000000000000000000000", backup.ref, 32);
+    memset((char *) backup.other, 0, 512);
+    memcpy((char *) &backup_other, (char *) backup.other, sizeof(node_backup_disk_t));
+    memcpy((char *) &backup, (char *) db.backups, sizeof(node_backup_entry_t));
+
+    node_ref_t ref = {
+        .id = 1,
+        .region = 0,
+        .backup = 1
+    };
+    node_t node;
+    node_lookup(ref, db, &node);
 
     for(;;);
 }

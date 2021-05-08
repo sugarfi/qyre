@@ -2,8 +2,6 @@
 #define _NODE_H
 
 #include <stdint.h>
-#include <error.h>
-#include <ata.h>
 
 typedef struct __attribute__((packed)) {
     char signature[12]; // BEGAYDOCRIME
@@ -73,10 +71,5 @@ typedef struct __attribute__((packed)) {
     node_t *nodes;
     uint8_t *data;
 } node_database_t;
-
-error_t node_lookup(node_ref_t, node_database_t, node_t *);
-error_t node_add(uint8_t *, uint64_t, node_type_t, node_database_t *, node_ref_t *);
-error_t node_delete(node_ref_t, node_database_t *);
-error_t node_get_data(node_ref_t, node_database_t, uint8_t **);
 
 #endif
