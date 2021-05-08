@@ -136,7 +136,7 @@ error_t node_lookup(node_ref_t ref, node_database_t db, node_t *out) {
     node_database_t real_db;
     if (ref.backup != 0) {
         node_backup_entry_t real_db_ref;
-        if (node_lookup_backup(ref.backup, db, &real_db_ref) != OK) {
+        if (node_lookup_backup(ref.backup - 1, db, &real_db_ref) != OK) {
             return ERROR_NOT_FOUND;
         }
         if (node_lookup_database_ref(real_db_ref, &real_db) != OK) {
