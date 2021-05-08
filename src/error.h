@@ -9,7 +9,8 @@ typedef enum {
     OK,
     ERROR_NOT_FOUND,
     ERROR_NOT_IMPLEMENTED,
-    ERROR_INVALID
+    ERROR_INVALID,
+    ERROR_HARDWARE
 } error_t;
 
 #endif

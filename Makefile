@@ -18,6 +18,7 @@ kernel.o: $(C_OBJ) font.o
 diskdb.bin:
 	@echo "Create disk database file"
 	@dd if=/dev/zero of=diskdb.bin bs=1M count=64
+	@dd if=hi.txt of=diskdb.bin conv=notrunc
 
 os.img: clean kernel.o diskdb.bin
 	@echo "Generate os.img"

@@ -21,6 +21,12 @@ int strncmp(char *a, char *b, int n) {
     return 1;
 }
 
+int strlen(char *s) {
+    int i;
+    for (i = 0; *s; s++, i++);
+    return i;
+}
+
 void memcpy(char *a, char *b, int n) {
     int i;
     for (i = 0; i < n; i++) {

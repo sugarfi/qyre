@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <bootboot.h>
 #include <graphics.h>
+#include <ata.h>
 
 const int MAX_REGION = 32;
 const int MAX_BACKUP = 4;
