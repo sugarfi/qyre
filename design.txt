@@ -59,8 +59,8 @@ to an external drive, for example. each entry in the list consists of:
       - 64 bits, optional - backup databse index to search for this node on
     - disk database:
       - 8 bits, optional - drive number of the disk. if it is 0, all disks will be searched.
-      - 8 bits, optional - partition number of the database. if it is 0, the database is assumed
-        to be at sector 0.
+      - 32 bits, optional - sector number of the database on the disk. if it is 0, the database
+        is assumed to be at the first sector.
     - network database:
       - 256 characters - the ip or domain of the server to connect to
       - 16 bits - the port to connect to
@@ -98,6 +98,6 @@ a connection,. when it recieves input, it should parse it as a follows:
     connection and overwrite the current list with it. then it should accept any number of new nodes, until
     it recieves a null node, at which point it should create every new node.
 
-a disk database should have the database written starting at sector 0 of the given partition.
+a disk database should have the database written starting at the given sector.
 
 the way node types are defined depends on the operating system.
