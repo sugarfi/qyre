@@ -77,6 +77,7 @@ error_t node_lookup_database_ref(node_backup_entry_t ref, node_database_t *out) 
                 if ((res = alloc(512, &header_alloc)) != OK) {
                     return res;
                 }
+                for(;;);
                 node_database_header_t *header = (node_database_header_t *) header_alloc.ptr;
                 if (ata_read(other->sector, 1, (uint8_t *) header) != OK) {
                     return ERROR_HARDWARE;
@@ -305,7 +306,8 @@ error_t node_add(uint8_t *data, uint64_t size, node_type_t type, node_database_t
                 return ERROR_NOT_FOUND;
             }
             if (node.id == 0) {
-                out->id = node.id = node_generate_id();
+                node.id = node_generate_id();
+                out->id = node.id;
                 out->region = i;
                 out->backup = 0;
 
@@ -360,6 +362,8 @@ error_t node_delete(node_ref_t ref, node_database_t *db) {
 }
 
 error_t node_get_data(node_ref_t ref, node_database_t db, uint8_t **out) {
+    debug_printf("%s\n", "hi");
+    for(;;);
     node_database_t real_db = db;
     if (ref.backup != 0) {
         node_backup_entry_t real_db_ref;

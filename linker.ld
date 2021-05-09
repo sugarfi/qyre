@@ -1,27 +1,25 @@
 ENTRY(kmain)
 
+PHDRS
+{
+    boot PT_LOAD;
+}
+
 SECTIONS
 {
     . = 0xffffffffffe02000;
 
-    .text :
-    {
-        *(.text)
-    }
-
-    .rodata : 
-    {
-        *(.rodata)
-    }
-
-    .data :
-    {
-        *(.data)
-    }
-
-    .bss :
-    {
+    .text : {
+        KEEP(*(.text.boot)) *(.text .text.*)   /* code */
+        *(.rodata .rodata.*)                   /* data */
+        *(.data .data.*)
+    } :boot
+    .bss (NOLOAD) : {                          /* bss */
+        . = ALIGN(16);
+        *(.bss .bss.*)
         *(COMMON)
-        *(.bss)
-    }
+    } :boot
+
+    /DISCARD/ : { *(.eh_frame) *(.comment) }
+
 }
