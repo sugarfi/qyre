@@ -22,6 +22,7 @@ extern unsigned char environment[4096];
 extern uint8_t fb;
 
 void kmain(void) {
+    for(;;);
     int i;
 
     node_database_header_t header = {
