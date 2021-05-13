@@ -12,6 +12,7 @@ error_t alloc(int size, alloc_t *out) {
     out->size = size;
     out->ref = ref;
     debug_printf("%d#%d@%d\r\n", ref.id, ref.region, ref.backup);
+    //test(ref, *alloc_db, &out->ptr);
     node_get_data(ref, *alloc_db, &out->ptr);
     for(;;);
     return OK;

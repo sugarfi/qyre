@@ -5,6 +5,7 @@
 #include <bootboot.h>
 #include <graphics.h>
 #include <alloc.h>
+#include <page.h>
 
 const int MAX_REGION = 32;
 const int MAX_BACKUP = 4;
@@ -16,12 +17,11 @@ const uintptr_t BACKUP_LIST_ADDR = REGION_LIST_ADDR + (sizeof(node_region_entry_
 const uintptr_t NODE_LIST_ADDR = BACKUP_LIST_ADDR + (sizeof(node_backup_entry_t) * MAX_BACKUP);
 const uintptr_t DATA_ADDR = NODE_LIST_ADDR + (sizeof(node_t) * NODES_PER_REGION * MAX_REGION);
 
-void puts(graphics_context_t ctx);
+extern BOOTBOOT bootboot;
+extern unsigned char environment[4096];
+extern uint8_t fb;
 
 void kmain(void) {
-    BOOTBOOT bootboot = *((BOOTBOOT *) 0xffffffffffe00000);
-    char *environment = (char *) 0xffffffffffe01000;
-
     int i;
 
     node_database_header_t header = {
@@ -73,7 +73,7 @@ void kmain(void) {
     graphics_context_t ctx = {
         .width = bootboot.fb_width,
         .height = bootboot.fb_height,
-        .fb = (uint32_t *) bootboot.fb_ptr,
+        .fb = (uint32_t *) &fb,
         .color_type = bootboot.fb_type
     };
 
@@ -88,6 +88,27 @@ void kmain(void) {
     memset((char *) backup.other, 0, 512);
     memcpy((char *) &backup_other, (char *) backup.other, sizeof(node_backup_disk_t));
     memcpy((char *) &backup, (char *) db.backups, sizeof(node_backup_entry_t));
+
+    uint64_t addr = 0x300000000;
+    debug_printf("%x\r\n", addr);
+    int pml4_i = (addr & 0b11000000000000000000000000000000) >> 30;
+    int pdt_i =  (addr & 0b00111111111000000000000000000000) >> 21;
+    int pd_i =   (addr & 0b00000000000111111111000000000000) >> 12;
+    int pt_i =   (addr & 0b00000000000000000000111111111111) >> 0;
+    debug_printf("%x %x %x %x\r\n", pml4_i, pdt_i, pd_i, pt_i);
+    for(;;);
+
+    uint64_t *pml4 = page_get_pml4();
+    uint64_t *pdt = (uint64_t *) (pml4[pml4_i] & ~0xfff);
+    uint64_t *pd = (uint64_t *) (pdt[pdt_i] & ~0xfff);
+    uint64_t *pt = (uint64_t *) (pd[pd_i] & ~0xfff);
+    
+    pt[pt_i] = (0x200000000 << 12) | 0x03;
+
+    __asm__ volatile ("mov %0, %%cr3" : : "r" ((uint64_t) pml4));
+
+    uint32_t *x = (uint32_t *) 0x300000000;
+    x[0] = 0xdeadbeef;
 
     node_ref_t ref = {
         .id = 1,

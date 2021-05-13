@@ -78,5 +78,6 @@ error_t node_lookup(node_ref_t, node_database_t, node_t *);
 error_t node_add(uint8_t *, uint64_t, node_type_t, node_database_t *, node_ref_t *);
 error_t node_delete(node_ref_t, node_database_t *);
 error_t node_get_data(node_ref_t, node_database_t, uint8_t **);
+int test(node_ref_t ref, node_database_t db, uint8_t **x);
 
 #endif

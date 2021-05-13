@@ -362,8 +362,6 @@ error_t node_delete(node_ref_t ref, node_database_t *db) {
 }
 
 error_t node_get_data(node_ref_t ref, node_database_t db, uint8_t **out) {
-    debug_printf("%s\n", "hi");
-    for(;;);
     node_database_t real_db = db;
     if (ref.backup != 0) {
         node_backup_entry_t real_db_ref;
@@ -385,3 +383,8 @@ error_t node_get_data(node_ref_t ref, node_database_t db, uint8_t **out) {
     return OK;
 }
 
+int test(node_ref_t ref, node_database_t db, uint8_t **x) {
+    debug_printf("%s\r\n", "hi");
+    debug_printf("%d#%d@%d\r\n", ref.id, ref.region, ref.backup);
+    return 0;
+}

@@ -14,7 +14,8 @@ LDFLAGS = -nostdlib -nostartfiles -T linker.ld
 kernel.o: $(C_OBJ)
 	@echo "Link kernel.o"
 	@ld $(LDFLAGS) -o boot/kernel.o $(C_OBJ) 
-	@strip -s boot/kernel.o
+	@echo "Strip kernel.o"
+	@strip -K mmio -K fb -K bootboot -K environment -K initstack -s boot/kernel.o
 
 dbfmt:
 	@echo "Compile dbfmt"
