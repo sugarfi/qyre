@@ -6,6 +6,7 @@
 
 #define COM1 0x3f8
 
+void debug_init(void);
 void debug_putc(char);
 void debug_puts(char *);
 void debug_puti(uint64_t, int);

@@ -2,3 +2,5 @@
 *.img
 *.bin
 *.swp
+limine.sys
+limine
